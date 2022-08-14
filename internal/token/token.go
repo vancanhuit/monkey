@@ -44,7 +44,7 @@ const (
 	NOT_EQUAL = "!="
 )
 
-var keyworkds = map[string]TokenType{
+var keywords = map[string]TokenType{
 	"fn":     FUNCTION,
 	"let":    LET,
 	"if":     IF,
@@ -55,7 +55,7 @@ var keyworkds = map[string]TokenType{
 }
 
 func LookupIdentifier(identifier string) TokenType {
-	if tok, ok := keyworkds[identifier]; ok {
+	if tok, ok := keywords[identifier]; ok {
 		return tok
 	}
 	return IDENTIFIER

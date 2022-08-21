@@ -225,6 +225,145 @@ func TestParsingInfixExpressions(t *testing.T) {
 	}
 }
 
+func TestIfExpressionParsing(t *testing.T) {
+	input := `if (x < y) { x }`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+	require.Len(t, program.Statements, 1)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	expr, ok := stmt.Expression.(*ast.IfExpression)
+	require.True(t, ok)
+
+	testInfixExpression(t, expr.Condition, "x", "<", "y")
+
+	require.Len(t, expr.Consequence.Statements, 1)
+
+	consequence, ok := expr.Consequence.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	testIdentifier(t, consequence.Expression, "x")
+}
+
+func TestIfElseExpressionParsing(t *testing.T) {
+	input := `if (x < y) { x } else { y }`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+	require.Len(t, program.Statements, 1)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	expr, ok := stmt.Expression.(*ast.IfExpression)
+	require.True(t, ok)
+
+	testInfixExpression(t, expr.Condition, "x", "<", "y")
+
+	require.Len(t, expr.Consequence.Statements, 1)
+
+	consequence, ok := expr.Consequence.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	testIdentifier(t, consequence.Expression, "x")
+
+	require.Len(t, expr.Alternative.Statements, 1)
+	alternative, ok := expr.Alternative.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	testIdentifier(t, alternative.Expression, "y")
+}
+
+func TestFunctionParametersParsing(t *testing.T) {
+	testCases := []struct {
+		input          string
+		expectedParams []string
+	}{
+		{input: "fn() {};", expectedParams: []string{}},
+		{input: "fn(x) {};", expectedParams: []string{"x"}},
+		{input: "fn(x, y, z) {};", expectedParams: []string{"x", "y", "z"}},
+	}
+
+	for _, tc := range testCases {
+		l := lexer.New(tc.input)
+		p := New(l)
+		program := p.ParseProgram()
+		require.Len(t, p.Errors(), 0)
+		require.NotNil(t, program)
+
+		stmt := program.Statements[0].(*ast.ExpressionStatement)
+		function := stmt.Expression.(*ast.FunctionLiteral)
+
+		require.Equal(t, len(function.Parameters), len(tc.expectedParams))
+
+		for i, identifier := range tc.expectedParams {
+			testLiteralExpression(t, function.Parameters[i], identifier)
+		}
+	}
+}
+
+func TestFunctionLiteralParsing(t *testing.T) {
+	input := `fn(x, y) { x + y; }`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.NotNil(t, program)
+	require.Len(t, program.Statements, 1)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	function, ok := stmt.Expression.(*ast.FunctionLiteral)
+	require.True(t, ok)
+	require.Len(t, function.Parameters, 2)
+
+	testLiteralExpression(t, function.Parameters[0], "x")
+	testLiteralExpression(t, function.Parameters[1], "y")
+
+	require.Len(t, function.Body.Statements, 1)
+
+	body, ok := function.Body.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	testInfixExpression(t, body.Expression, "x", "+", "y")
+}
+
+func TestCallExpressionParsing(t *testing.T) {
+	input := "add(1, 2 * 3, 4 + 5);"
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+	require.Len(t, program.Statements, 1)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	expr, ok := stmt.Expression.(*ast.CallExpression)
+	require.True(t, ok)
+
+	testIdentifier(t, expr.Function, "add")
+
+	require.Len(t, expr.Arguments, 3)
+
+	testLiteralExpression(t, expr.Arguments[0], 1)
+	testInfixExpression(t, expr.Arguments[1], 2, "*", 3)
+	testInfixExpression(t, expr.Arguments[2], 4, "+", 5)
+}
+
 func TestOperatorPrecedenceParsing(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -313,6 +452,18 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{
 			"!(true == true)",
 			"(!(true == true))",
+		},
+		{
+			"a + add(b * c) + d",
+			"((a + add((b * c))) + d)",
+		},
+		{
+			"add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+			"add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+		},
+		{
+			"add(a + b + c * d / f + g)",
+			"add((((a + b) + ((c * d) / f)) + g))",
 		},
 	}
 

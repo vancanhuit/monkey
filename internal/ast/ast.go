@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"strings"
 
 	"github.com/vancanhuit/monkey/internal/token"
 )
@@ -115,6 +116,25 @@ func (stmt *ExpressionStatement) String() string {
 	return ""
 }
 
+type BlockStatement struct {
+	Token      token.Token
+	Statements []Statement
+}
+
+func (stmt *BlockStatement) statementNode() {}
+func (stmt *BlockStatement) TokenLiteral() string {
+	return stmt.Token.Literal
+}
+func (stmt *BlockStatement) String() string {
+	var out bytes.Buffer
+
+	for _, s := range stmt.Statements {
+		out.WriteString(s.String())
+	}
+
+	return out.String()
+}
+
 type IntegerLiteral struct {
 	Token token.Token
 	Value int64
@@ -179,4 +199,84 @@ func (b *Boolean) TokenLiteral() string {
 }
 func (b *Boolean) String() string {
 	return b.Token.Literal
+}
+
+type IfExpression struct {
+	Token       token.Token
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (expr *IfExpression) expressionNode() {}
+func (expr *IfExpression) TokenLiteral() string {
+	return expr.Token.Literal
+}
+func (expr *IfExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("if")
+	out.WriteString(expr.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(expr.Consequence.String())
+
+	if expr.Alternative != nil {
+		out.WriteString("else ")
+		out.WriteString(expr.Alternative.String())
+	}
+
+	return out.String()
+}
+
+type FunctionLiteral struct {
+	Token      token.Token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (expr *FunctionLiteral) expressionNode() {}
+func (expr *FunctionLiteral) TokenLiteral() string {
+	return expr.Token.Literal
+}
+func (expr *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	params := []string{}
+	for _, p := range expr.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(expr.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ","))
+	out.WriteString(")")
+	out.WriteString(expr.Body.String())
+
+	return out.String()
+}
+
+type CallExpression struct {
+	Token     token.Token
+	Function  Expression
+	Arguments []Expression
+}
+
+func (expr *CallExpression) expressionNode() {}
+func (expr *CallExpression) TokenLiteral() string {
+	return expr.Token.Literal
+}
+func (expr *CallExpression) String() string {
+	var out bytes.Buffer
+
+	args := []string{}
+	for _, a := range expr.Arguments {
+		args = append(args, a.String())
+	}
+
+	out.WriteString(expr.Function.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
+
+	return out.String()
 }

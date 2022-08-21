@@ -29,6 +29,7 @@ var precedences = map[token.TokenType]int{
 	token.MINUS:        SUM,
 	token.SLASH:        PRODUCT,
 	token.ASTERISK:     PRODUCT,
+	token.LEFT_PAREN:   CALL,
 }
 
 type (
@@ -59,6 +60,8 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LEFT_PAREN, p.parseGroupedExpression)
+	p.registerPrefix(token.IF, p.parseIfExpression)
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -69,6 +72,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQUAL, p.parseInfixExpression)
 	p.registerInfix(token.LESS_THAN, p.parseInfixExpression)
 	p.registerInfix(token.GREATER_THAN, p.parseInfixExpression)
+	p.registerInfix(token.LEFT_PAREN, p.parseCallExpression)
 	return p
 }
 
@@ -276,4 +280,164 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 
 	p.nextToken()
 	return expr
+}
+
+func (p *Parser) parseIfExpression() ast.Expression {
+	expr := &ast.IfExpression{
+		Token: p.curToken,
+	}
+
+	if p.peekToken.Type != token.LEFT_PAREN {
+		p.peekError(token.LEFT_PAREN)
+		return nil
+	}
+
+	p.nextToken()
+	p.nextToken()
+	expr.Condition = p.parseExpression(LOWEST)
+
+	if p.peekToken.Type != token.RIGHT_PAREN {
+		p.peekError(token.RIGHT_PAREN)
+		return nil
+	}
+
+	p.nextToken()
+
+	if p.peekToken.Type != token.LEFT_BRACE {
+		p.peekError(token.LEFT_BRACE)
+		return nil
+	}
+
+	p.nextToken()
+
+	expr.Consequence = p.parseBlockStatement()
+
+	if p.peekToken.Type == token.ELSE {
+		p.nextToken()
+
+		if p.peekToken.Type != token.LEFT_BRACE {
+			p.peekError(token.LEFT_BRACE)
+			return nil
+		}
+
+		p.nextToken()
+		expr.Alternative = p.parseBlockStatement()
+	}
+
+	return expr
+}
+
+func (p *Parser) parseBlockStatement() *ast.BlockStatement {
+	block := &ast.BlockStatement{
+		Token: p.curToken,
+	}
+
+	block.Statements = []ast.Statement{}
+
+	p.nextToken()
+
+	for p.curToken.Type != token.RIGHT_BRACE && p.curToken.Type != token.EOF {
+		stmt := p.parseStatement()
+		if stmt != nil {
+			block.Statements = append(block.Statements, stmt)
+		}
+		p.nextToken()
+	}
+
+	return block
+}
+
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	literal := &ast.FunctionLiteral{
+		Token: p.curToken,
+	}
+
+	if p.peekToken.Type != token.LEFT_PAREN {
+		p.peekError(token.LEFT_PAREN)
+		return nil
+	}
+
+	p.nextToken()
+	literal.Parameters = p.parseFunctionParameters()
+
+	if p.peekToken.Type != token.LEFT_BRACE {
+		p.peekError(token.LEFT_BRACE)
+		return nil
+	}
+
+	p.nextToken()
+	literal.Body = p.parseBlockStatement()
+
+	return literal
+}
+
+func (p *Parser) parseFunctionParameters() []*ast.Identifier {
+	identifers := []*ast.Identifier{}
+
+	if p.peekToken.Type == token.RIGHT_PAREN {
+		p.nextToken()
+		return identifers
+	}
+
+	p.nextToken()
+
+	identifer := &ast.Identifier{
+		Token: p.curToken,
+		Value: p.curToken.Literal,
+	}
+
+	identifers = append(identifers, identifer)
+
+	for p.peekToken.Type == token.COMMA {
+		p.nextToken()
+		p.nextToken()
+		identifer = &ast.Identifier{
+			Token: p.curToken,
+			Value: p.curToken.Literal,
+		}
+		identifers = append(identifers, identifer)
+	}
+
+	if p.peekToken.Type != token.RIGHT_PAREN {
+		p.peekError(token.RIGHT_PAREN)
+		return nil
+	}
+
+	p.nextToken()
+
+	return identifers
+}
+
+func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+	expr := &ast.CallExpression{
+		Token:    p.curToken,
+		Function: function,
+	}
+	expr.Arguments = p.parseCallArguments()
+	return expr
+}
+func (p *Parser) parseCallArguments() []ast.Expression {
+	args := []ast.Expression{}
+	if p.peekToken.Type == token.RIGHT_PAREN {
+		p.nextToken()
+		return args
+	}
+
+	p.nextToken()
+
+	args = append(args, p.parseExpression(LOWEST))
+	for p.peekToken.Type == token.COMMA {
+		p.nextToken()
+		p.nextToken()
+		args = append(args, p.parseExpression(LOWEST))
+	}
+
+	if p.peekToken.Type != token.RIGHT_PAREN {
+		p.peekError(token.RIGHT_PAREN)
+		return nil
+	}
+
+	p.nextToken()
+
+	return args
 }

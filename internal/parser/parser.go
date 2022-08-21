@@ -270,6 +270,7 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 	expr := p.parseExpression(LOWEST)
 
 	if p.peekToken.Type != token.RIGHT_PAREN {
+		p.peekError(p.peekToken.Type)
 		return nil
 	}
 

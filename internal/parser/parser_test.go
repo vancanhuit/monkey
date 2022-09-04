@@ -134,6 +134,30 @@ func TestIdentifierExpression(t *testing.T) {
 	testIdentifier(t, stmt.Expression, "foobar")
 }
 
+func TestBooleanExpression(t *testing.T) {
+	testCases := []struct {
+		input           string
+		expectedBoolean bool
+	}{
+		{"true;", true},
+		{"false;", false},
+	}
+
+	for _, tc := range testCases {
+		l := lexer.New(tc.input)
+		p := New(l)
+		program := p.ParseProgram()
+		require.Len(t, p.Errors(), 0)
+		require.NotNil(t, program)
+		require.Len(t, program.Statements, 1)
+
+		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		require.True(t, ok)
+
+		testBooleanLiteral(t, stmt.Expression, tc.expectedBoolean)
+	}
+}
+
 func TestIntegerLiteralExpression(t *testing.T) {
 	input := "5;"
 	l := lexer.New(input)

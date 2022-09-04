@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/vancanhuit/monkey/internal/evaluator"
 	"github.com/vancanhuit/monkey/internal/lexer"
 	"github.com/vancanhuit/monkey/internal/parser"
 )
@@ -32,7 +33,13 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, prorgam.String())
-		io.WriteString(out, "\n")
+		value := evaluator.Eval(prorgam)
+		if value != nil {
+			io.WriteString(out, value.Inspect())
+			io.WriteString(out, "\n")
+		}
+
+		// io.WriteString(out, prorgam.String())
+		// io.WriteString(out, "\n")
 	}
 }

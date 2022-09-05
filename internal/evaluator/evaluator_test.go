@@ -46,7 +46,7 @@ func testEval(input string) object.Object {
 func testIntegerObject(t *testing.T, obj object.Object, expected int64) {
 	result, ok := obj.(*object.Integer)
 	require.True(t, ok)
-	require.Equal(t, result.Value, expected)
+	require.Equal(t, expected, result.Value)
 }
 
 func TestEvalBooleanExpression(t *testing.T) {
@@ -83,11 +83,11 @@ func TestEvalBooleanExpression(t *testing.T) {
 func testBooleanObject(t *testing.T, obj object.Object, expected bool) {
 	result, ok := obj.(*object.Boolean)
 	require.True(t, ok)
-	require.Equal(t, result.Value, expected)
+	require.Equal(t, expected, result.Value)
 }
 
 func TestBangOperator(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		input    string
 		expected bool
 	}{
@@ -98,8 +98,111 @@ func TestBangOperator(t *testing.T) {
 		{"!!false", false},
 		{"!!5", true},
 	}
-	for _, tt := range tests {
-		evaluated := testEval(tt.input)
-		testBooleanObject(t, evaluated, tt.expected)
+	for _, tc := range testCases {
+		evaluated := testEval(tc.input)
+		testBooleanObject(t, evaluated, tc.expected)
+	}
+}
+
+func TestIfElseExpressions(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"if (true) { 10 }", 10},
+		{"if (false) { 10 }", nil},
+		{"if (1) { 10 }", 10},
+		{"if (1 < 2) { 10 }", 10},
+		{"if (1 > 2) { 10 }", nil},
+		{"if (1 > 2) { 10 } else { 20 }", 20},
+		{"if (1 < 2) { 10 } else { 20 }", 10},
+	}
+	for _, tc := range testCases {
+		evaluated := testEval(tc.input)
+		integer, ok := tc.expected.(int)
+		if ok {
+			testIntegerObject(t, evaluated, int64(integer))
+		} else {
+			testNullObject(t, evaluated)
+		}
+	}
+}
+
+func testNullObject(t *testing.T, obj object.Object) {
+	require.Equal(t, obj, Null)
+}
+
+func TestReturnStatements(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected int64
+	}{
+		{"return 10;", 10},
+		{"return 10; 9;", 10},
+		{"return 2 * 5; 9;", 10},
+		{"9; return 2 * 5; 9;", 10},
+		{
+			`
+			if (10 > 1) {
+				if (10 > 1) {
+					return 10;
+				}
+				return 1;
+			}`, 10,
+		},
+	}
+	for _, tc := range testCases {
+		evaluated := testEval(tc.input)
+		testIntegerObject(t, evaluated, tc.expected)
+	}
+}
+
+func TestErrorHandling(t *testing.T) {
+	testCases := []struct {
+		input           string
+		expectedMessage string
+	}{
+		{
+			"5 + true;",
+			"type mismatch: INTEGER + BOOLEAN",
+		},
+		{
+			"5 + true; 5;",
+			"type mismatch: INTEGER + BOOLEAN",
+		},
+		{
+			"-true",
+			"unknown operator: -BOOLEAN",
+		},
+		{
+			"true + false;",
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			"5; true + false; 5",
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			"if (10 > 1) { true + false; }",
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			`
+			if (10 > 1) {
+				if (10 > 1) {
+					return true + false;
+				}
+				return 1;
+			}
+			`,
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+	}
+
+	for _, tc := range testCases {
+		evaluated := testEval(tc.input)
+		errObj, ok := evaluated.(*object.Error)
+		require.True(t, ok)
+		require.Equal(t, tc.expectedMessage, errObj.Message)
 	}
 }

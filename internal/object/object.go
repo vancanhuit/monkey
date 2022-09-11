@@ -1,6 +1,12 @@
 package object
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	"github.com/vancanhuit/monkey/internal/ast"
+)
 
 type ObjectType string
 
@@ -10,6 +16,7 @@ const (
 	NullObj        = "NULL"
 	ReturnValueObj = "RETURN_VALUE"
 	ErrorObj       = "ERROR"
+	FunctionObj    = "FUNCTION"
 )
 
 type Object interface {
@@ -70,21 +77,26 @@ func (e *Error) Inspect() string {
 	return "ERROR: " + e.Message
 }
 
-type Environment struct {
-	store map[string]Object
+type Function struct {
+	Parameters []*ast.Identifier
+	Body       *ast.BlockStatement
+	Env        *Environment
 }
 
-func NewEnvironment() *Environment {
-	s := make(map[string]Object)
-	return &Environment{store: s}
+func (o *Function) Type() ObjectType {
+	return FunctionObj
 }
-
-func (e *Environment) Get(name string) (Object, bool) {
-	obj, ok := e.store[name]
-	return obj, ok
-}
-
-func (e *Environment) Set(name string, val Object) Object {
-	e.store[name] = val
-	return val
+func (o *Function) Inspect() string {
+	var out bytes.Buffer
+	params := []string{}
+	for _, p := range o.Parameters {
+		params = append(params, p.String())
+	}
+	out.WriteString("fn")
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") {\n")
+	out.WriteString(o.Body.String())
+	out.WriteString("\n}")
+	return out.String()
 }

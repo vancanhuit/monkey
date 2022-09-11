@@ -29,6 +29,7 @@ if (5 < 10) {
 10 != 9;
 "foobar"
 "foo bar"
+[1, 2];
 `
 
 	testCases := []struct {
@@ -110,6 +111,12 @@ if (5 < 10) {
 		{token.Semicolon, ";"},
 		{token.String, "foobar"},
 		{token.String, "foo bar"},
+		{token.LeftBracket, "["},
+		{token.Integer, "1"},
+		{token.Comma, ","},
+		{token.Integer, "2"},
+		{token.RightBracket, "]"},
+		{token.Semicolon, ";"},
 		{token.EOF, ""},
 	}
 	l := New(input)

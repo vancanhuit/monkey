@@ -13,6 +13,7 @@ const (
 
 	Identifier = "IDENTIFIER"
 	Integer    = "INTEGER"
+	String     = "STRING"
 
 	Assign   = "="
 	Plus     = "+"

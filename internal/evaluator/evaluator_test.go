@@ -221,6 +221,10 @@ func TestErrorHandling(t *testing.T) {
 			"foobar",
 			"identifier not found: foobar",
 		},
+		{
+			`"Hello" - "World"`,
+			"unknown operator: STRING - STRING",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -301,4 +305,20 @@ let ourFunction = fn(first) {
 ourFunction(20) + first + second;`
 
 	testIntegerObject(t, testEval(input), 70)
+}
+
+func TestStringLiteral(t *testing.T) {
+	input := `"Hello World!"`
+	evaluated := testEval(input)
+	str, ok := evaluated.(*object.String)
+	require.True(t, ok)
+	require.Equal(t, "Hello World!", str.Value)
+}
+
+func TestStringConcatenation(t *testing.T) {
+	input := `"Hello" + " " + "World!"`
+	evaluated := testEval(input)
+	str, ok := evaluated.(*object.String)
+	require.True(t, ok)
+	require.Equal(t, "Hello World!", str.Value)
 }

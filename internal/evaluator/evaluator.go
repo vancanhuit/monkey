@@ -77,6 +77,10 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		return applyFunction(function, args)
+	case *ast.StringLiteral:
+		return &object.String{
+			Value: n.Value,
+		}
 	}
 	return nil
 }
@@ -178,6 +182,8 @@ func evalInfixExpression(
 		return &object.Error{
 			Message: fmt.Sprintf("type mismatch: %s %s %s", left.Type(), operator, right.Type()),
 		}
+	case left.Type() == object.StringObj && left.Type() == object.StringObj:
+		return evalStringInfixExpression(operator, left, right)
 	default:
 		return &object.Error{
 			Message: fmt.Sprintf("unknown operator: %s %s %s", left.Type(), operator, right.Type()),
@@ -320,4 +326,20 @@ func unwrapReturnValue(obj object.Object) object.Object {
 	}
 
 	return obj
+}
+
+func evalStringInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	if operator != "+" {
+		return &object.Error{
+			Message: fmt.Sprintf(
+				"unknown operator: %s %s %s",
+				left.Type(), operator, right.Type()),
+		}
+	}
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.String).Value
+	return &object.String{Value: leftVal + rightVal}
 }

@@ -503,3 +503,16 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		require.Equal(t, actual, tc.expected)
 	}
 }
+
+func TestStringLiteralExpression(t *testing.T) {
+	input := `"hello world";`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	literal, ok := stmt.Expression.(*ast.StringLiteral)
+	require.True(t, ok)
+	require.Equal(t, "hello world", literal.Value)
+}

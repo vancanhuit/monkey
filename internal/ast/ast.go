@@ -280,3 +280,16 @@ func (expr *CallExpression) String() string {
 
 	return out.String()
 }
+
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (e *StringLiteral) expressionNode() {}
+func (e *StringLiteral) TokenLiteral() string {
+	return e.Token.Literal
+}
+func (e *StringLiteral) String() string {
+	return e.Token.Literal
+}

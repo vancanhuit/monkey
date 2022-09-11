@@ -174,6 +174,8 @@ func evalInfixExpression(
 	switch {
 	case left.Type() == object.IntegerObj && right.Type() == object.IntegerObj:
 		return evalIntegerInfixExpression(operator, left, right)
+	case left.Type() == object.StringObj && right.Type() == object.StringObj:
+		return evalStringInfixExpression(operator, left, right)
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
@@ -182,8 +184,6 @@ func evalInfixExpression(
 		return &object.Error{
 			Message: fmt.Sprintf("type mismatch: %s %s %s", left.Type(), operator, right.Type()),
 		}
-	case left.Type() == object.StringObj && left.Type() == object.StringObj:
-		return evalStringInfixExpression(operator, left, right)
 	default:
 		return &object.Error{
 			Message: fmt.Sprintf("unknown operator: %s %s %s", left.Type(), operator, right.Type()),

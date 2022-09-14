@@ -27,6 +27,7 @@ const (
 
 	Comma     = ","
 	Semicolon = ";"
+	Colon     = ":"
 
 	LeftParen    = "("
 	RightParen   = ")"

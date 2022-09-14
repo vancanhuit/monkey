@@ -563,3 +563,148 @@ func TestParsingIndexExpressions(t *testing.T) {
 	testIdentifier(t, indexExp.Left, "myArray")
 	testInfixExpression(t, indexExp.Index, 1, "+", 1)
 }
+
+func TestParsingHashLiteralsStringKeys(t *testing.T) {
+	input := `{"one": 1, "two": 2, "three": 3}`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	require.True(t, ok)
+	require.Len(t, hash.Pairs, 3)
+
+	expected := map[string]int64{
+		"one":   1,
+		"two":   2,
+		"three": 3,
+	}
+	for key, value := range hash.Pairs {
+		literal, ok := key.(*ast.StringLiteral)
+		require.True(t, ok)
+		expectedValue := expected[literal.String()]
+		testIntegerLiteral(t, value, expectedValue)
+	}
+}
+
+func TestParsingEmptyHashLiteral(t *testing.T) {
+	input := "{}"
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	require.True(t, ok)
+	require.Len(t, hash.Pairs, 0)
+}
+
+func TestParsingHashLiteralsBooleanKeys(t *testing.T) {
+	input := `{true: 1, false: 2}`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	require.True(t, ok)
+
+	expected := map[string]int64{
+		"true":  1,
+		"false": 2,
+	}
+
+	require.Equal(t, len(expected), len(hash.Pairs))
+
+	for key, value := range hash.Pairs {
+		boolean, ok := key.(*ast.Boolean)
+		require.True(t, ok)
+
+		expectedValue := expected[boolean.String()]
+		testIntegerLiteral(t, value, expectedValue)
+	}
+}
+
+func TestParsingHashLiteralsIntegerKeys(t *testing.T) {
+	input := `{1: 1, 2: 2, 3: 3}`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	require.True(t, ok)
+
+	expected := map[string]int64{
+		"1": 1,
+		"2": 2,
+		"3": 3,
+	}
+
+	require.Equal(t, len(expected), len(hash.Pairs))
+
+	for key, value := range hash.Pairs {
+		integer, ok := key.(*ast.IntegerLiteral)
+		require.True(t, ok)
+
+		expectedValue := expected[integer.String()]
+
+		testIntegerLiteral(t, value, expectedValue)
+	}
+}
+
+func TestParsingHashLiteralsWithExpressions(t *testing.T) {
+	input := `{"one": 0 + 1, "two": 10 - 8, "three": 15 / 5}`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	require.Len(t, p.Errors(), 0)
+	require.NotNil(t, program)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok)
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	require.True(t, ok)
+
+	require.Len(t, hash.Pairs, 3)
+
+	testCases := map[string]func(ast.Expression){
+		"one": func(e ast.Expression) {
+			testInfixExpression(t, e, 0, "+", 1)
+		},
+		"two": func(e ast.Expression) {
+			testInfixExpression(t, e, 10, "-", 8)
+		},
+		"three": func(e ast.Expression) {
+			testInfixExpression(t, e, 15, "/", 5)
+		},
+	}
+
+	for key, value := range hash.Pairs {
+		literal, ok := key.(*ast.StringLiteral)
+		require.True(t, ok)
+
+		testFunc, ok := testCases[literal.String()]
+		require.True(t, ok)
+
+		testFunc(value)
+	}
+}

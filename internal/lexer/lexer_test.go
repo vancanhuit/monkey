@@ -30,6 +30,7 @@ if (5 < 10) {
 "foobar"
 "foo bar"
 [1, 2];
+{"foo": "bar"}
 `
 
 	testCases := []struct {
@@ -117,6 +118,11 @@ if (5 < 10) {
 		{token.Integer, "2"},
 		{token.RightBracket, "]"},
 		{token.Semicolon, ";"},
+		{token.LeftBrace, "{"},
+		{token.String, "foo"},
+		{token.Colon, ":"},
+		{token.String, "bar"},
+		{token.RightBrace, "}"},
 		{token.EOF, ""},
 	}
 	l := New(input)
